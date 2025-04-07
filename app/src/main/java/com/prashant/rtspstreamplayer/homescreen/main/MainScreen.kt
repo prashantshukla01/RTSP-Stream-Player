@@ -49,10 +49,16 @@ fun MainScreen(viewModel: MainViewModel) {
     val rtspUrl by viewModel.currentRtspUrl.collectAsState()
     val isRecording by viewModel.isRecording.collectAsState()
     val recordingMessage by viewModel.recordingMessage.collectAsState()
+    val recordingDuration by viewModel.recordingDuration.collectAsState()
 
     // Snackbar setup
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    // Screen dimensions
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val videoHeight = (screenWidth * 10f) / 16f
 
     // Handle recording messages
     LaunchedEffect(recordingMessage) {
@@ -66,11 +72,6 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     }
-
-    // Screen dimensions
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val videoHeight = (screenWidth * 10f) / 16f
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -111,7 +112,8 @@ fun MainScreen(viewModel: MainViewModel) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                ))
+                )
+            )
         }
     ) { paddingValues ->
         Box(
@@ -197,6 +199,30 @@ fun MainScreen(viewModel: MainViewModel) {
                             }
                         }
                     )
+
+                    // Recording timer overlay
+                    if (isRecording) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(8.dp)
+                                .background(Color.Red.copy(alpha = 0.7f), RoundedCornerShape(4.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = remember(recordingDuration) {
+                                    val totalSeconds = recordingDuration / 1000
+                                    val hours = totalSeconds / 3600
+                                    val minutes = (totalSeconds % 3600) / 60
+                                    val seconds = totalSeconds % 60
+                                    String.format("%02d:%02d:%02d", hours, minutes, seconds)
+                                },
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
                     if (!isPlaying) {
                         Box(
