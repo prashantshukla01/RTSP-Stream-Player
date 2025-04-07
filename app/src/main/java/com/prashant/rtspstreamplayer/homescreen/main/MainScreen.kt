@@ -33,6 +33,9 @@ import androidx.compose.ui.unit.Dp
 import com.prashant.rtspstreamplayer.viewmodel.MainViewModel
 import org.videolan.libvlc.util.VLCVideoLayout
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,17 +47,33 @@ fun MainScreen(viewModel: MainViewModel) {
     var layoutAttached by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
     val rtspUrl by viewModel.currentRtspUrl.collectAsState()
+    val isRecording by viewModel.isRecording.collectAsState()
+    val recordingMessage by viewModel.recordingMessage.collectAsState()
 
-    val outputFileName = "recorded_video"
+    // Snackbar setup
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    // Get screen dimensions to calculate video box size
+    // Handle recording messages
+    LaunchedEffect(recordingMessage) {
+        recordingMessage?.let { message ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    duration = SnackbarDuration.Long
+                )
+                viewModel.clearRecordingMessage()
+            }
+        }
+    }
+
+    // Screen dimensions
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-
-    // Calculate video height as a ratio of available width (16:9 aspect ratio)
     val videoHeight = (screenWidth * 10f) / 16f
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -69,15 +88,13 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 },
                 actions = {
-                    // Settings icon
-                    IconButton(onClick = { /* Add your settings action here */ }) {
+                    IconButton(onClick = { /* Settings */ }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // PiP icon
                     IconButton(
                         onClick = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -94,8 +111,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
-                )
-            )
+                ))
         }
     ) { paddingValues ->
         Box(
@@ -140,7 +156,7 @@ fun MainScreen(viewModel: MainViewModel) {
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Video player section with height based on screen ratio
+                // Video player section
                 Text(
                     "Video Stream",
                     style = MaterialTheme.typography.titleMedium,
@@ -151,7 +167,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(videoHeight) // Use calculated height based on screen ratio
+                        .height(videoHeight)
                         .clip(RoundedCornerShape(12.dp))
                         .border(
                             width = 1.dp,
@@ -198,11 +214,10 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 }
 
-                // Added weight to push the controls to the bottom
                 Spacer(modifier = Modifier.weight(1f))
             }
 
-            // Controls section at the bottom with improved button sizing
+            // Controls section
             Card(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -221,12 +236,10 @@ fun MainScreen(viewModel: MainViewModel) {
                         modifier = Modifier.padding(bottom = 12.dp)
                     )
 
-                    // Improved button row with better alignment and sizing
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // Using SmallButton for more compact layout
                         SmallButton(
                             icon = Icons.Default.PlayArrow,
                             text = "Play",
@@ -248,8 +261,6 @@ fun MainScreen(viewModel: MainViewModel) {
                                 isPlaying = false
                             }
                         )
-                        val isRecording by viewModel.isRecording.collectAsState()
-
 
                         SmallButton(
                             icon = Icons.Default.FiberManualRecord,
@@ -260,12 +271,11 @@ fun MainScreen(viewModel: MainViewModel) {
                                     viewModel.stopRecording()
                                 } else {
                                     if (rtspUrl.isNotEmpty()) {
-                                        viewModel.startRecording(rtspUrl, outputFileName)
+                                        viewModel.startRecording("recording")
                                     }
                                 }
                             }
                         )
-
                     }
                 }
             }
@@ -288,9 +298,9 @@ private fun SmallButton(
     Button(
         onClick = onClick,
         modifier = Modifier
-            .height(40.dp) // Reduced height
+            .height(40.dp)
             .padding(horizontal = 4.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp), // Smaller internal padding
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
         colors = ButtonDefaults.buttonColors(containerColor = color)
     ) {
         Row(
@@ -300,12 +310,12 @@ private fun SmallButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp) // Smaller icon
+                modifier = Modifier.size(16.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = text,
-                style = MaterialTheme.typography.bodySmall, // Smaller text
+                style = MaterialTheme.typography.bodySmall,
                 maxLines = 1
             )
         }
